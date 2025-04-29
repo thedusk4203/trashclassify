@@ -1,0 +1,13 @@
+tensorflow
+keras
+numpy
+matplotlib
+pillow
+flask
+opencv-python
+werkzeug
+scikit-learn
+requests
+pandas
+tqdm
+pyyaml

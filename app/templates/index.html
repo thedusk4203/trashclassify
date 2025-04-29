@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Phân loại Rác thải Thông minh</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;
+</head>
+<body>
+    <div class="app-container">
+        <nav class="navbar navbar-expand-lg navbar-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i class="fas fa-recycle me-2"></i>
+                    <span>ECO CLASSIFY</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#"><i class="fas fa-home me-1"></i> Trang chủ</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#categories"><i class="fas fa-info-circle me-1"></i> Hướng dẫn</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="main-content container mt-4">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="camera-section card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h3><i class="fas fa-camera me-2"></i>Nhận diện qua Camera</h3>
+                            <div class="camera-controls">
+                                <button id="startCameraBtn" class="btn btn-primary">
+                                    <i class="fas fa-play me-1"></i>Bắt đầu nhận diện
+                                </button>
+                                <button id="stopCameraBtn" class="btn btn-outline-danger" disabled>
+                                    <i class="fas fa-stop me-1"></i>Dừng
+                                </button>
+                                <button id="captureBtnStatic" class="btn btn-outline-success" disabled>
+                                    <i class="fas fa-camera me-1"></i>Chụp
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="videoContainer" class="video-container hidden">
+                                <div class="camera-frame-container">
+                                    <img id="cameraFeed" src="{{ url_for('video_feed') }}" alt="Camera Feed">
+                                </div>
+                                <div class="camera-overlay">
+                                    <div class="camera-frame"></div>
+                                </div>
+                            </div>
+                            <div id="cameraPlaceholder" class="camera-placeholder">
+                                <i class="fas fa-camera"></i>
+                                <p>Nhấn "Bắt đầu nhận diện" để mở camera</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="result-section card mt-4">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-pie me-2"></i>Kết quả Phân loại</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="result-display">
+                                <div class="result-icon" id="resultIcon">
+                                    <i class="fas fa-question-circle"></i>
+                                </div>
+                                <div class="result-info">
+                                    <h2 id="className">Chưa có dữ liệu</h2>
+                                    <div class="confidence-container">
+                                        <label>Độ tin cậy:</label>
+                                        <div class="progress">
+                                            <div id="confidenceValue" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                        <span id="confidencePercent">0%</span>
+                                    </div>
+                                    <div class="result-tips mt-3" id="resultTips">
+                                        <p>Hãy bắt đầu nhận diện để xem kết quả phân loại</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="upload-section card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-upload me-2"></i>Tải lên Ảnh</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="uploadForm" enctype="multipart/form-data">
+                                <div class="upload-area mb-3" id="uploadArea">
+                                    <div class="upload-icon">
+                                        <i class="fas fa-file-image"></i>
+                                    </div>
+                                    <p>Kéo và thả ảnh hoặc nhấn để chọn</p>
+                                    <input type="file" class="form-control" id="imageUpload" name="file" accept="image/*" hidden>
+                                </div>
+                                <div id="imagePreview" class="image-preview mb-3 d-none">
+                                    <img id="uploadPreview" src="#" alt="Preview">
+                                    <div class="image-preview-remove" id="removePreview">
+                                        <i class="fas fa-times"></i>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="fas fa-search me-2"></i>Phân loại ảnh
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="categories-section card mt-4" id="categories">
+                        <div class="card-header">
+                            <h3><i class="fas fa-layer-group me-2"></i>Phân Loại Rác</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="categories-group mb-4">
+                                <h4 class="category-group-title text-success"><i class="fas fa-leaf me-2"></i>Rác Hữu Cơ</h4>
+                                <p class="category-group-desc">Rác có nguồn gốc động vật hoặc thực vật có thể phân hủy tự nhiên</p>
+                                <ul class="categories-list">
+                                    <li class="category-item" data-category="biological">
+                                        <div class="category-icon">🍎</div>
+                                        <div class="category-info">
+                                            <h4>Rác Sinh Học</h4>
+                                            <p>Thức ăn thừa, trái cây và rau quả hỏng, vỏ trái cây, lá cây, thịt, cá...</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <div class="categories-group mb-4">
+                                <h4 class="category-group-title text-primary"><i class="fas fa-recycle me-2"></i>Rác Tái Chế</h4>
+                                <p class="category-group-desc">Rác có thể tái sử dụng hoặc chế biến thành sản phẩm mới</p>
+                                <ul class="categories-list">
+                                    <li class="category-item" data-category="cardboard">
+                                        <div class="category-icon">📦</div>
+                                        <div class="category-info">
+                                            <h4>Giấy Carton</h4>
+                                            <p>Hộp giấy, vật liệu đóng gói, thùng các tông</p>
+                                        </div>
+                                    </li>
+                                    <li class="category-item" data-category="paper">
+                                        <div class="category-icon">📄</div>
+                                        <div class="category-info">
+                                            <h4>Giấy</h4>
+                                            <p>Giấy in, tạp chí, báo, giấy gói...</p>
+                                        </div>
+                                    </li>
+                                    <li class="category-item" data-category="plastic">
+                                        <div class="category-icon">♻️</div>
+                                        <div class="category-info">
+                                            <h4>Nhựa</h4>
+                                            <p>Chai nhựa, hộp nhựa, túi nhựa và các sản phẩm nhựa khác</p>
+                                        </div>
+                                    </li>
+                                    <li class="category-item" data-category="metal">
+                                        <div class="category-icon">🥫</div>
+                                        <div class="category-info">
+                                            <h4>Kim Loại</h4>
+                                            <p>Lon, hộp thiếc, và các sản phẩm làm từ kim loại như sắt, nhôm, đồng...</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <div class="categories-group mb-4">
+                                <h4 class="category-group-title text-warning"><i class="fas fa-ban me-2"></i>Rác Không Tái Chế</h4>
+                                <p class="category-group-desc">Rác không thể tái sử dụng hoặc chế biến</p>
+                                <ul class="categories-list">
+                                    <li class="category-item" data-category="brown-glass">
+                                        <div class="category-icon">🍶</div>
+                                        <div class="category-info">
+                                            <h4>Thủy Tinh Màu Nâu</h4>
+                                            <p>Chai thủy tinh màu nâu, ly và các sản phẩm thủy tinh màu nâu khác</p>
+                                        </div>
+                                    </li>
+                                    <li class="category-item" data-category="green-glass">
+                                        <div class="category-icon">🥤</div>
+                                        <div class="category-info">
+                                            <h4>Thủy Tinh Màu Xanh</h4>
+                                            <p>Chai thủy tinh màu xanh lá và thủy tinh màu xanh lá không thể tái chế</p>
+                                        </div>
+                                    </li>
+                                    <li class="category-item" data-category="white-glass">
+                                        <div class="category-icon">🥛</div>
+                                        <div class="category-info">
+                                            <h4>Thủy Tinh Trong</h4>
+                                            <p>Thủy tinh trong không thể tái chế</p>
+                                        </div>
+                                    </li>
+                                    <li class="category-item" data-category="trash">
+                                        <div class="category-icon">🗑️</div>
+                                        <div class="category-info">
+                                            <h4>Rác Khác</h4>
+                                            <p>Quần áo cũ, xương động vật, vỏ sò, vỏ trứng...</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <div class="categories-group">
+                                <h4 class="category-group-title text-danger"><i class="fas fa-skull-crossbones me-2"></i>Rác Nguy Hại</h4>
+                                <p class="category-group-desc">Rác có nguy cơ gây hại cho sức khỏe con người và môi trường</p>
+                                <ul class="categories-list">
+                                    <li class="category-item" data-category="battery">
+                                        <div class="category-icon">🔋</div>
+                                        <div class="category-info">
+                                            <h4>Pin</h4>
+                                            <p>Tất cả các loại pin chứa hóa chất có hại cần xử lý đặc biệt</p>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>Hệ thống Phân loại Rác thải Thông minh</h4>
+                        <p>Sử dụng trí tuệ nhân tạo và học sâu để nhận diện và phân loại rác thải, góp phần bảo vệ môi trường.</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4>Links</h4>
+                        <ul class="footer-links">
+                            <li><a href="#"><i class="fas fa-angle-right me-1"></i>Trang chủ</a></li>
+                            <li><a href="#categories"><i class="fas fa-angle-right me-1"></i>Danh mục</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-3">
+                        <h4>Liên hệ</h4>
+                        <div class="contact-info">
+                            <p><i class="fas fa-envelope me-2"></i>contact@ecoclassify.com</p>
+                            <p><i class="fas fa-phone me-2"></i>(+84) 123 456 789</p>
+                            <div class="social-links">
+                                <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
+                                <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                                <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                                <a href="#" class="social-link"><i class="fab fa-linkedin-in"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="copyright">
+                    <p>© 2025 Eco Classify. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const videoContainer = document.getElementById('videoContainer');
+            const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+            const startCameraBtn = document.getElementById('startCameraBtn');
+            const stopCameraBtn = document.getElementById('stopCameraBtn');
+            const captureBtn = document.getElementById('captureBtnStatic');
+            const cameraFeed = document.getElementById('cameraFeed');
+            const className = document.getElementById('className');
+            const confidenceValue = document.getElementById('confidenceValue');
+            const confidencePercent = document.getElementById('confidencePercent');
+            const uploadForm = document.getElementById('uploadForm');
+            const uploadArea = document.getElementById('uploadArea');
+            const imageUpload = document.getElementById('imageUpload');
+            const imagePreview = document.getElementById('imagePreview');
+            const uploadPreview = document.getElementById('uploadPreview');
+            const removePreview = document.getElementById('removePreview');
+            const resultIcon = document.getElementById('resultIcon');
+            const resultTips = document.getElementById('resultTips');
+
+            let isStreamActive = false;
+            let predictionInterval = null;
+            let isCaptureMode = false;
+            let capturedImageUrl = null;
+            let capturedClassName = null;
+            let isProcessingImage = false;
+
+            // Cập nhật biểu tượng và mẹo dựa trên loại rác
+            function updateResultDisplay(className) {
+                // Đặt biểu tượng dựa trên loại rác
+                let iconClass = 'fas fa-question-circle';
+                let tipText = 'Không thể xác định loại rác này.';
+                
+                // Phân loại theo nhóm lớn
+                let categoryGroup = '';
+                
+                switch(className.toLowerCase()) {
+                    case 'battery':
+                        iconClass = 'fas fa-skull-crossbones';
+                        tipText = 'Pin và ắc quy là rác thải nguy hại, cần được thu gom và xử lý đặc biệt tại các điểm thu gom chuyên dụng.';
+                        categoryGroup = 'Rác thải nguy hại';
+                        break;
+                        
+                    case 'biological':
+                        iconClass = 'fas fa-leaf';
+                        tipText = 'Rác hữu cơ có thể được ủ làm phân compost hoặc xử lý thành biogas.';
+                        categoryGroup = 'Rác hữu cơ';
+                        break;
+                        
+                    case 'cardboard':
+                    case 'paper':
+                    case 'plastic':
+                    case 'metal':
+                        if (className.toLowerCase() === 'cardboard' || className.toLowerCase() === 'paper') {
+                            iconClass = 'fas fa-scroll';
+                            tipText = 'Giấy và bìa carton là rác tái chế. Nên xếp gọn và phân loại riêng.';
+                        } else if (className.toLowerCase() === 'plastic') {
+                            iconClass = 'fas fa-wine-bottle';
+                            tipText = 'Nhựa là rác tái chế. Nên rửa sạch và làm phẳng trước khi bỏ đi.';
+                        } else if (className.toLowerCase() === 'metal') {
+                            iconClass = 'fas fa-cookie-bite';
+                            tipText = 'Kim loại là rác tái chế. Kim loại có thể tái chế nhiều lần mà không mất chất lượng.';
+                        }
+                        categoryGroup = 'Rác tái chế';
+                        break;
+                        
+                    case 'brown-glass':
+                    case 'green-glass':
+                    case 'white-glass':
+                    case 'trash':
+                        if (className.toLowerCase().includes('glass')) {
+                            iconClass = 'fas fa-glass-martini-alt';
+                            tipText = 'Thủy tinh là rác không tái chế. Cần bọc cẩn thận để tránh gây sát thương.';
+                        } else {
+                            iconClass = 'fas fa-trash-alt';
+                            tipText = 'Rác thải hỗn hợp khác thuộc nhóm rác không tái chế.';
+                        }
+                        categoryGroup = 'Rác không tái chế';
+                        break;
+                }
+                
+                resultIcon.innerHTML = `<i class="${iconClass}"></i>`;
+                
+                // Hiển thị thông tin phân loại và gợi ý
+                resultTips.innerHTML = `
+                    <div class="category-badge mb-2">
+                        <span class="badge ${getCategoryBadgeClass(categoryGroup)}">${categoryGroup || 'Không xác định'}</span>
+                    </div>
+                    <p><i class="fas fa-lightbulb me-1"></i>${tipText}</p>
+                `;
+            }
+            
+            // Hàm trả về class CSS cho badge tương ứng với loại rác
+            function getCategoryBadgeClass(category) {
+                switch(category) {
+                    case 'Rác hữu cơ':
+                        return 'bg-success';
+                    case 'Rác tái chế':
+                        return 'bg-primary';
+                    case 'Rác không tái chế':
+                        return 'bg-warning text-dark';
+                    case 'Rác thải nguy hại':
+                        return 'bg-danger';
+                    default:
+                        return 'bg-secondary';
+                }
+            }
+
+            // Bật camera
+            startCameraBtn.addEventListener('click', function() {
+                videoContainer.classList.remove('hidden');
+                cameraPlaceholder.style.display = 'none';
+                // Đặt src lại để tránh các vấn đề với cache
+                cameraFeed.src = "{{ url_for('video_feed') }}?" + new Date().getTime();
+                isStreamActive = true;
+                startCameraBtn.disabled = true;
+                stopCameraBtn.disabled = false;
+                captureBtn.disabled = false;
+                
+                // Xóa chế độ xem ảnh đã chụp nếu có
+                exitCaptureViewMode();
+                
+                // Nếu không đang xử lý ảnh, bắt đầu phân loại
+                if (!isProcessingImage) {
+                    startPredictionUpdates();
+                }
+            });
+
+            // Tắt camera
+            stopCameraBtn.addEventListener('click', function() {
+                fetch('/stop_camera')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        videoContainer.classList.add('hidden');
+                        cameraPlaceholder.style.display = 'flex';
+                        isStreamActive = false;
+                        startCameraBtn.disabled = false;
+                        stopCameraBtn.disabled = true;
+                        captureBtn.disabled = true;
+                        
+                        // Dừng cập nhật kết quả phân loại
+                        stopPredictionUpdates();
+                    });
+            });
+
+            // Hàm lấy kết quả phân loại mới nhất
+            function updatePrediction() {
+                if (!isStreamActive || isCaptureMode || isProcessingImage) return;
+                
+                fetch('/get_prediction')
+                    .then(response => response.json())
+                    .then(data => {
+                        className.textContent = data.class_name;
+                        confidenceValue.style.width = data.confidence + '%';
+                        confidencePercent.textContent = data.confidence + '%';
+                        updateResultDisplay(data.class_name);
+                    })
+                    .catch(error => console.error('Error fetching prediction:', error));
+            }
+
+            // Bắt đầu cập nhật kết quả phân loại
+            function startPredictionUpdates() {
+                // Cập nhật ngay lập tức và sau đó mỗi 1 giây
+                updatePrediction();
+                predictionInterval = setInterval(updatePrediction, 1000);
+            }
+
+            // Dừng cập nhật kết quả phân loại
+            function stopPredictionUpdates() {
+                clearInterval(predictionInterval);
+            }
+
+            // Chức năng chụp ảnh từ camera
+            captureBtn.addEventListener('click', function() {
+                if (!isStreamActive) return;
+                
+                isProcessingImage = true;
+                stopPredictionUpdates();
+                
+                // Hiệu ứng flash khi chụp
+                const flashOverlay = document.createElement('div');
+                flashOverlay.style.position = 'absolute';
+                flashOverlay.style.top = '0';
+                flashOverlay.style.left = '0';
+                flashOverlay.style.right = '0';
+                flashOverlay.style.bottom = '0';
+                flashOverlay.style.backgroundColor = 'white';
+                flashOverlay.style.opacity = '0.8';
+                flashOverlay.style.zIndex = '10';
+                flashOverlay.style.pointerEvents = 'none';
+                
+                videoContainer.appendChild(flashOverlay);
+                
+                // Âm thanh camera
+                const shutterSound = new Audio('https://freesound.org/data/previews/202/202044_1038806-lq.mp3');
+                shutterSound.play().catch(() => {});
+                
+                // Animation flash
+                setTimeout(() => {
+                    flashOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        videoContainer.removeChild(flashOverlay);
+                    }, 300);
+                }, 100);
+                
+                // Gửi yêu cầu chụp và phân loại
+                fetch('/capture_image', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Lỗi khi chụp ảnh: ' + data.error);
+                        isProcessingImage = false;
+                        return;
+                    }
+                    
+                    // Lưu thông tin phân loại
+                    capturedClassName = data.class_name;
+                    
+                    // Hiển thị kết quả phân loại
+                    className.textContent = data.class_name;
+                    confidenceValue.style.width = data.confidence + '%';
+                    confidencePercent.textContent = data.confidence + '%';
+                    updateResultDisplay(data.class_name);
+                    
+                    // Chuyển sang chế độ xem ảnh đã chụp
+                    enterCaptureViewMode(data.image_path);
+                })
+                .catch(error => {
+                    console.error('Error during image capture:', error);
+                    alert('Có lỗi xảy ra khi chụp ảnh');
+                    isProcessingImage = false;
+                });
+            });
+
+            // Chuyển sang chế độ xem ảnh đã chụp
+            function enterCaptureViewMode(imagePath) {
+                isCaptureMode = true;
+                capturedImageUrl = imagePath;
+                
+                // Tạm dừng cập nhật dự đoán liên tục
+                stopPredictionUpdates();
+                
+                // Lưu đường dẫn camera hiện tại
+                const originalCameraFeedSrc = cameraFeed.src;
+                
+                // Thay đổi nguồn ảnh thành ảnh đã chụp
+                cameraFeed.src = imagePath;
+                
+                // Thêm nút trở về camera
+                const returnButton = document.createElement('button');
+                returnButton.className = 'btn btn-info capture-return-btn';
+                returnButton.innerHTML = '<i class="fas fa-arrow-left me-2"></i>Trở về camera';
+                returnButton.style.position = 'absolute';
+                returnButton.style.bottom = '10px';
+                returnButton.style.left = '10px';
+                returnButton.style.zIndex = '15';
+                
+                // Thêm nút tải ảnh xuống
+                const downloadButton = document.createElement('button');
+                downloadButton.className = 'btn btn-secondary capture-download-btn';
+                downloadButton.innerHTML = '<i class="fas fa-download me-2"></i>Tải xuống';
+                downloadButton.style.position = 'absolute';
+                downloadButton.style.bottom = '10px';
+                downloadButton.style.right = '10px';
+                downloadButton.style.zIndex = '15';
+                
+                // Thêm lớp overlay để hiển thị các nút
+                const controlsOverlay = document.createElement('div');
+                controlsOverlay.className = 'capture-controls-overlay';
+                controlsOverlay.style.position = 'absolute';
+                controlsOverlay.style.top = '0';
+                controlsOverlay.style.left = '0';
+                controlsOverlay.style.right = '0';
+                controlsOverlay.style.bottom = '0';
+                controlsOverlay.style.backgroundColor = 'rgba(0,0,0,0.2)';
+                controlsOverlay.style.zIndex = '10';
+                controlsOverlay.style.display = 'flex';
+                controlsOverlay.style.justifyContent = 'center';
+                controlsOverlay.style.alignItems = 'center';
+                
+                // Thêm các phần tử vào container
+                videoContainer.appendChild(controlsOverlay);
+                videoContainer.appendChild(returnButton);
+                videoContainer.appendChild(downloadButton);
+                
+                // Cập nhật trạng thái nút
+                captureBtn.disabled = true;
+                
+                // Xử lý khi nhấn nút trở về
+                returnButton.addEventListener('click', function() {
+                    // Trở về xem camera
+                    cameraFeed.src = originalCameraFeedSrc;
+                    exitCaptureViewMode();
+                    
+                    // Tiếp tục cập nhật dự đoán
+                    isProcessingImage = false;
+                    if (isStreamActive) {
+                        startPredictionUpdates();
+                    }
+                });
+                
+                // Xử lý khi nhấn nút tải xuống
+                downloadButton.addEventListener('click', function() {
+                    // Tạo tên file dựa trên loại rác và thời gian
+                    const fileName = `${capturedClassName || className.textContent}_${new Date().getTime()}.jpg`;
+                    const a = document.createElement('a');
+                    a.href = imagePath;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+                
+                // Thêm phần chọn loại rác thủ công
+                const manualClassContainer = document.createElement('div');
+                manualClassContainer.className = 'manual-class-selection';
+                manualClassContainer.style.position = 'absolute';
+                manualClassContainer.style.top = '10px';
+                manualClassContainer.style.left = '10px';
+                manualClassContainer.style.right = '10px';
+                manualClassContainer.style.zIndex = '15';
+                manualClassContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                manualClassContainer.style.padding = '10px';
+                manualClassContainer.style.borderRadius = '5px';
+                manualClassContainer.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+                
+                manualClassContainer.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="fw-bold mb-0">Chọn loại rác thủ công:</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="manualClassSwitch">
+                            <label class="form-check-label" for="manualClassSwitch">Tự chọn</label>
+                        </div>
+                    </div>
+                    <select class="form-select" id="manualClassSelect" disabled>
+                        <option value="battery">Pin & Ắc quy</option>
+                        <option value="biological">Rác hữu cơ</option>
+                        <option value="brown-glass">Thủy tinh nâu</option>
+                        <option value="cardboard">Bìa carton</option>
+                        <option value="green-glass">Thủy tinh xanh</option>
+                        <option value="metal">Kim loại</option>
+                        <option value="paper">Giấy</option>
+                        <option value="plastic">Nhựa</option>
+                        <option value="trash">Rác thải khác</option>
+                        <option value="white-glass">Thủy tinh trắng</option>
+                    </select>
+                `;
+                
+                videoContainer.appendChild(manualClassContainer);
+                
+                // Xử lý sự kiện khi chọn loại rác thủ công
+                const manualClassSwitch = manualClassContainer.querySelector('#manualClassSwitch');
+                const manualClassSelect = manualClassContainer.querySelector('#manualClassSelect');
+                
+                // Đặt giá trị mặc định cho select là loại rác đã phát hiện
+                if (capturedClassName) {
+                    const options = manualClassSelect.options;
+                    for (let i = 0; i < options.length; i++) {
+                        if (options[i].value === capturedClassName.toLowerCase()) {
+                            manualClassSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                
+                manualClassSwitch.addEventListener('change', function() {
+                    manualClassSelect.disabled = !this.checked;
+                    
+                    if (this.checked) {
+                        // Hiển thị thông báo đã chọn thủ công
+                        const selectedClass = manualClassSelect.options[manualClassSelect.selectedIndex].text;
+                        className.textContent = selectedClass + " (đã chọn thủ công)";
+                        capturedClassName = manualClassSelect.value;
+                        updateResultDisplay(capturedClassName);
+                    } else {
+                        // Trở lại kết quả phân loại tự động
+                        className.textContent = capturedClassName || "Không xác định";
+                        updateResultDisplay(capturedClassName);
+                    }
+                });
+                
+                manualClassSelect.addEventListener('change', function() {
+                    if (manualClassSwitch.checked) {
+                        const selectedClass = this.options[this.selectedIndex].text;
+                        className.textContent = selectedClass + " (đã chọn thủ công)";
+                        capturedClassName = this.value;
+                        updateResultDisplay(capturedClassName);
+                    }
+                });
+            }
+            
+            // Thoát chế độ xem ảnh đã chụp
+            function exitCaptureViewMode() {
+                isCaptureMode = false;
+                capturedImageUrl = null;
+                
+                // Xóa các phần tử UI đã thêm
+                const returnBtn = videoContainer.querySelector('.capture-return-btn');
+                const downloadBtn = videoContainer.querySelector('.capture-download-btn');
+                const overlay = videoContainer.querySelector('.capture-controls-overlay');
+                const manualClassContainer = videoContainer.querySelector('.manual-class-selection');
+                
+                if (returnBtn) videoContainer.removeChild(returnBtn);
+                if (downloadBtn) videoContainer.removeChild(downloadBtn);
+                if (overlay) videoContainer.removeChild(overlay);
+                if (manualClassContainer) videoContainer.removeChild(manualClassContainer);
+                
+                // Kích hoạt lại nút chụp
+                if (isStreamActive) {
+                    captureBtn.disabled = false;
+                }
+            }
+
+            // Xử lý kéo thả và chọn ảnh
+            uploadArea.addEventListener('click', function() {
+                imageUpload.click();
+            });
+
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.classList.add('upload-area-active');
+            });
+
+            uploadArea.addEventListener('dragleave', function() {
+                this.classList.remove('upload-area-active');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.classList.remove('upload-area-active');
+                
+                if (e.dataTransfer.files.length) {
+                    imageUpload.files = e.dataTransfer.files;
+                    displayImagePreview(e.dataTransfer.files[0]);
+                }
+            });
+
+            // Hiển thị xem trước ảnh
+            imageUpload.addEventListener('change', function() {
+                if (this.files.length) {
+                    displayImagePreview(this.files[0]);
+                }
+            });
+
+            // Hiển thị xem trước ảnh đã chọn
+            function displayImagePreview(file) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    uploadPreview.src = e.target.result;
+                    uploadArea.classList.add('d-none');
+                    imagePreview.classList.remove('d-none');
+                };
+                
+                reader.readAsDataURL(file);
+            }
+
+            // Xóa xem trước ảnh
+            removePreview.addEventListener('click', function() {
+                imageUpload.value = '';
+                imagePreview.classList.add('d-none');
+                uploadArea.classList.remove('d-none');
+                
+                // Nếu đang xử lý ảnh, trở về phân loại thông thường
+                if (isProcessingImage) {
+                    isProcessingImage = false;
+                    if (isStreamActive) {
+                        startPredictionUpdates();
+                    }
+                }
+            });
+
+            // Xử lý tải lên ảnh
+            uploadForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const file = imageUpload.files[0];
+                
+                if (!file) {
+                    alert('Vui lòng chọn một ảnh để tải lên');
+                    return;
+                }
+                
+                // Dừng phân loại từ camera
+                isProcessingImage = true;
+                stopPredictionUpdates();
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    capturedClassName = data.class_name;
+                    className.textContent = data.class_name;
+                    confidenceValue.style.width = data.confidence + '%';
+                    confidencePercent.textContent = data.confidence + '%';
+                    updateResultDisplay(data.class_name);
+                    
+                    // Hiển thị giao diện để chọn loại rác thủ công
+                    showManualClassForUpload();
+                })
+                .catch(error => {
+                    console.error('Error uploading image:', error);
+                    isProcessingImage = false;
+                    if (isStreamActive) {
+                        startPredictionUpdates();
+                    }
+                });
+            });
+            
+            // Hiển thị giao diện chọn loại rác thủ công cho ảnh tải lên
+            function showManualClassForUpload() {
+                // Xóa UI cũ nếu có
+                const existingManualClass = document.querySelector('.upload-manual-class');
+                if (existingManualClass) {
+                    existingManualClass.remove();
+                }
+                
+                // Tạo UI mới
+                const manualClassDiv = document.createElement('div');
+                manualClassDiv.className = 'upload-manual-class mt-3';
+                
+                manualClassDiv.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="fw-bold mb-0">Chọn loại rác thủ công:</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="uploadManualSwitch">
+                            <label class="form-check-label" for="uploadManualSwitch">Tự chọn</label>
+                        </div>
+                    </div>
+                    <select class="form-select" id="uploadManualSelect" disabled>
+                        <option value="battery">Pin & Ắc quy</option>
+                        <option value="biological">Rác hữu cơ</option>
+                        <option value="brown-glass">Thủy tinh nâu</option>
+                        <option value="cardboard">Bìa carton</option>
+                        <option value="green-glass">Thủy tinh xanh</option>
+                        <option value="metal">Kim loại</option>
+                        <option value="paper">Giấy</option>
+                        <option value="plastic">Nhựa</option>
+                        <option value="trash">Rác thải khác</option>
+                        <option value="white-glass">Thủy tinh trắng</option>
+                    </select>
+                    <div class="d-flex justify-content-between mt-3">
+                        <button type="button" class="btn btn-secondary btn-sm" id="cancelUploadBtn">
+                            <i class="fas fa-times me-1"></i>Hủy
+                        </button>
+                        <button type="button" class="btn btn-success btn-sm" id="downloadUploadBtn">
+                            <i class="fas fa-download me-1"></i>Tải xuống
+                        </button>
+                    </div>
+                `;
+                
+                // Chèn vào sau form upload
+                uploadForm.insertAdjacentElement('afterend', manualClassDiv);
+                
+                // Đặt giá trị mặc định cho select là loại rác đã phát hiện
+                const uploadManualSelect = document.getElementById('uploadManualSelect');
+                if (capturedClassName) {
+                    const options = uploadManualSelect.options;
+                    for (let i = 0; i < options.length; i++) {
+                        if (options[i].value === capturedClassName.toLowerCase()) {
+                            uploadManualSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                
+                // Xử lý các sự kiện
+                const uploadManualSwitch = document.getElementById('uploadManualSwitch');
+                const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+                const downloadUploadBtn = document.getElementById('downloadUploadBtn');
+                
+                uploadManualSwitch.addEventListener('change', function() {
+                    uploadManualSelect.disabled = !this.checked;
+                    
+                    if (this.checked) {
+                        // Hiển thị thông báo đã chọn thủ công
+                        const selectedClass = uploadManualSelect.options[uploadManualSelect.selectedIndex].text;
+                        className.textContent = selectedClass + " (đã chọn thủ công)";
+                        capturedClassName = uploadManualSelect.value;
+                        updateResultDisplay(capturedClassName);
+                    } else {
+                        // Trở lại kết quả phân loại tự động
+                        className.textContent = capturedClassName || "Không xác định";
+                        updateResultDisplay(capturedClassName);
+                    }
+                });
+                
+                uploadManualSelect.addEventListener('change', function() {
+                    if (uploadManualSwitch.checked) {
+                        const selectedClass = this.options[this.selectedIndex].text;
+                        className.textContent = selectedClass + " (đã chọn thủ công)";
+                        capturedClassName = this.value;
+                        updateResultDisplay(capturedClassName);
+                    }
+                });
+                
+                cancelUploadBtn.addEventListener('click', function() {
+                    // Xóa UI phân loại thủ công
+                    manualClassDiv.remove();
+                    
+                    // Khôi phục trạng thái cũ
+                    isProcessingImage = false;
+                    if (isStreamActive) {
+                        startPredictionUpdates();
+                    }
+                    
+                    // Reset form upload
+                    removePreview.click();
+                });
+                
+                downloadUploadBtn.addEventListener('click', function() {
+                    const file = imageUpload.files[0];
+                    if (file) {
+                        // Lấy phần mở rộng của file
+                        const fileExt = file.name.split('.').pop();
+                        
+                        // Tạo tên file mới dựa trên loại rác
+                        const currentClassName = uploadManualSwitch.checked ? 
+                            uploadManualSelect.value : capturedClassName;
+                        const fileName = `${currentClassName}_${new Date().getTime()}.${fileExt}`;
+                        
+                        // Tạo URL để download
+                        const url = URL.createObjectURL(file);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
